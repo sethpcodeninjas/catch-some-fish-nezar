@@ -3,6 +3,11 @@ namespace SpriteKind {
     export const SwimmingFish = SpriteKind.create()
     export const CaughtFish = SpriteKind.create()
 }
+controller.A.onEvent(ControllerButtonEvent.Pressed, function(){
+    if(canReel){
+       lure.setVelocity(0, -100) 
+    }
+})
 let titleScreen = sprites.create(img`
     ................................................................................................................................................................
     ................................................................................................................................................................
@@ -500,16 +505,41 @@ let lureImg = img`
     . . . . c . . .
 `
 let lure: Sprite = null
+let canReel = false
 function introSequence(){
     lure = sprites.create(lureImg, SpriteKind.Player)
     scene.cameraFollowSprite(lure)
-    story.queueStoryPart(function() {
+    story.queueStoryPart(function() { // moving to the water
         story.spriteMoveToLocation(lure, 80, 170, 140)
     })
-    story.queueStoryPart(function() {
+    story.queueStoryPart(function() { // in the water
         lure.startEffect(effects.bubbles, 500)
         lure.setVelocity(0, 50)
         controller.moveSprite(lure, 50, 0)
+        canReel = true
     })
 }
+function spawnFish(numFish: number){
+    for (let i = 0; i < numFish; i++){
+        let randomFishIndex = randint(0, fishImgs.length - 1)
+        let newFish = sprites.create(fishImgs[randomFishIndex], SpriteKind.SwimmingFish)
+        tiles.placeOnRandomTile(newFish, myTiles.tile4)
+        newFish.setFlag(SpriteFlag.BounceOnWall, true)
+
+        let direction = randint(0, 1)
+        if (direction == 0){
+            newFish.setVelocity(randint(10, 20), 0)
+        }
+        else {
+            newFish.setVelocity(randint(-20, -10), 0)
+        }
+
+        let rightFishImg = fishImgs[randomFishIndex]
+        let leftFishImg = rightFishImg.clone()
+        leftFishImg.flipX()
+        sprites.setDataImage(newFish, "rightImg", rightFishImg)
+        sprites.setDataImage(newFish, "leftImg", left   FishImg)
+    }
+}
 introSequence()
+spawnFish(20)
