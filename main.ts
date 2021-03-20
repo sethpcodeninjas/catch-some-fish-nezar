@@ -3,11 +3,74 @@ namespace SpriteKind {
     export const SwimmingFish = SpriteKind.create()
     export const CaughtFish = SpriteKind.create()
 }
-controller.A.onEvent(ControllerButtonEvent.Pressed, function(){
-    if(canReel){
-       lure.setVelocity(0, -100) 
+function introSequence () {
+    lure = sprites.create(lureImg, SpriteKind.Player)
+    scene.cameraFollowSprite(lure)
+    story.queueStoryPart(function () {
+        // moving to the water
+        story.spriteMoveToLocation(lure, 80, 170, 140)
+    })
+    story.queueStoryPart(function () {
+        // in the water
+        lure.startEffect(effects.bubbles, 500)
+        lure.setVelocity(0, 50)
+        controller.moveSprite(lure, 50, 0)
+        canReel = true
+    })
+}
+controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
+    if (canReel) {
+        lure.setVelocity(0, -100)
+        lure.setKind(SpriteKind.CatchingLure)
     }
 })
+scene.onOverlapTile(SpriteKind.CatchingLure, assets.tile`transparency16`, function (sprite, location) {
+    sprite.setVelocity(0, 0)
+    checkCatch()
+})
+function checkCatch(){
+    let allCaught = sprites.allOfKind(SpriteKind.CaughtFish)
+    let sum = 0
+    for (let fish of allCaught){
+        sum += sprites.readDataNumber(fish, "points")
+    }
+    info.setScore(sum)
+    game.over(true)
+}
+function spawnFish (numFish: number) {
+    for (let index = 0; index < numFish; index++) {
+        randomFishIndex = randint(0, fishImgs.length - 1)
+        newFish = sprites.create(fishImgs[randomFishIndex], SpriteKind.SwimmingFish)
+        tiles.placeOnRandomTile(newFish, assets.tile`tile4`)
+        newFish.setFlag(SpriteFlag.BounceOnWall, true)
+        direction = randint(0, 1)
+        if (direction == 0) {
+            newFish.setVelocity(randint(10, 20), 0)
+        } else {
+            newFish.setVelocity(randint(-20, -10), 0)
+        }
+        rightFishImg = fishImgs[randomFishIndex]
+        leftFishImg = rightFishImg.clone()
+        leftFishImg.flipX()
+        sprites.setDataImage(newFish, "rightImg", rightFishImg)
+        sprites.setDataImage(newFish, "leftImg", leftFishImg)
+        sprites.setDataNumber(newFish, "points", fishPoints[randomFishIndex])
+    }
+}
+sprites.onOverlap(SpriteKind.CatchingLure, SpriteKind.SwimmingFish, function (sprite, otherSprite) {
+    otherSprite.follow(sprite)
+    otherSprite.setKind(SpriteKind.CaughtFish)
+})
+let allSwimming: Sprite[] = []
+let leftFishImg: Image = null
+let rightFishImg: Image = null
+let direction = 0
+let newFish: Sprite = null
+let randomFishIndex = 0
+let canReel = false
+let lure: Sprite = null
+let lureImg: Image = null
+let fishImgs: Image[] = []
 let titleScreen = sprites.create(img`
     ................................................................................................................................................................
     ................................................................................................................................................................
@@ -272,7 +335,7 @@ let fishingCat = sprites.create(img`
     ..422222222.............
     `, SpriteKind.Player)
 tiles.placeOnTile(fishingCat, tiles.getTileLocation(0, 9))
-let fishImgs = [
+fishImgs = [
 img`
     ..................
     ..................
@@ -494,52 +557,25 @@ let fishPoints = [
 1,
 1
 ]
-let lureImg = img`
-    . . c . . c . .
-    . . c . c c c .
-    . . c . . c . .
-    . 2 2 . . c . .
-    . 2 c 2 . c . .
-    . . c 2 . c . .
-    . 2 2 c . c . .
-    . . . . c . . .
-`
-let lure: Sprite = null
-let canReel = false
-function introSequence(){
-    lure = sprites.create(lureImg, SpriteKind.Player)
-    scene.cameraFollowSprite(lure)
-    story.queueStoryPart(function() { // moving to the water
-        story.spriteMoveToLocation(lure, 80, 170, 140)
-    })
-    story.queueStoryPart(function() { // in the water
-        lure.startEffect(effects.bubbles, 500)
-        lure.setVelocity(0, 50)
-        controller.moveSprite(lure, 50, 0)
-        canReel = true
-    })
-}
-function spawnFish(numFish: number){
-    for (let i = 0; i < numFish; i++){
-        let randomFishIndex = randint(0, fishImgs.length - 1)
-        let newFish = sprites.create(fishImgs[randomFishIndex], SpriteKind.SwimmingFish)
-        tiles.placeOnRandomTile(newFish, myTiles.tile4)
-        newFish.setFlag(SpriteFlag.BounceOnWall, true)
-
-        let direction = randint(0, 1)
-        if (direction == 0){
-            newFish.setVelocity(randint(10, 20), 0)
-        }
-        else {
-            newFish.setVelocity(randint(-20, -10), 0)
-        }
-
-        let rightFishImg = fishImgs[randomFishIndex]
-        let leftFishImg = rightFishImg.clone()
-        leftFishImg.flipX()
-        sprites.setDataImage(newFish, "rightImg", rightFishImg)
-        sprites.setDataImage(newFish, "leftImg", left   FishImg)
-    }
-}
+lureImg = img`
+    . . c . . c . . 
+    . . c . c c c . 
+    . . c . . c . . 
+    . 2 2 . . c . . 
+    . 2 c 2 . c . . 
+    . . c 2 . c . . 
+    . 2 2 c . c . . 
+    . . . . c . . . 
+    `
 introSequence()
 spawnFish(20)
+game.onUpdate(function () {
+    allSwimming = sprites.allOfKind(SpriteKind.SwimmingFish)
+    for (let fish of allSwimming) {
+        if (fish.vx > 0) {
+            fish.setImage(sprites.readDataImage(fish, "rightImg"))
+        } else {
+            fish.setImage(sprites.readDataImage(fish, "leftImg"))
+        }
+    }
+})
